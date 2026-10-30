@@ -107,7 +107,8 @@ class BridgeTests(unittest.TestCase):
             messages = self.run_job("censor", {"openAfter": False})
         done = next(message for message in messages if message["type"] == "done")
         self.assertEqual(done["hits"], 0)
-        self.assertEqual(done["outputs"], [str(report)])
+        # На Windows TEMP может содержать короткое имя 8.3; Bridge раскрывает его.
+        self.assertEqual(done["outputs"], [str(report.resolve())])
         self.assertEqual(done["succeeded"], 1)
 
     def test_stream_options_and_custom_output_reach_engine(self):
