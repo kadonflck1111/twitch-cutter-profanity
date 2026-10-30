@@ -1,0 +1,89 @@
+name: Build Windows NVIDIA release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-gpu.txt
+            requirements-build.txt
+
+      - name: Cache Whisper self-test model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-tiny-${{ runner.os }}-v1
+
+      - name: Install FFmpeg
+        shell: pwsh
+        run: |
+          .\tools\install_ffmpeg.ps1
+          ffmpeg -version | Select-Object -First 1
+          ffmpeg -hide_banner -L
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
+
+      - name: Verify release tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: python tools/check_release.py --source-only --tag "${{ github.ref_name }}"
+
+      - name: Run tests
+        run: |
+          node --check design/app.js
+          python -X utf8 -m unittest discover -s tests -v
+
+      - name: Build, self-test and package
+        env:
+          HF_HUB_DISABLE_TELEMETRY: "1"
+        run: python tools/build_release.py --self-test
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Twitch-Cutter-Profanity-${{ github.ref_name }}-windows-x64-nvidia
+          path: |
+            release/*.zip
+            release/*.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+      - name: Create or update draft GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $assets = @(Get-ChildItem release -File | ForEach-Object { $_.FullName })
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @assets --clobber
+          } else {
+            gh release create $tag @assets --verify-tag --draft --generate-notes --title "Twitch Cutter Profanity $tag"
+          }

@@ -1,0 +1,10 @@
+changelog:
+  categories:
+    - title: Новые возможности
+      labels: [feature, enhancement]
+    - title: Исправления
+      labels: [bug, fix]
+    - title: Документация и обслуживание
+      labels: [documentation, dependencies, maintenance]
+    - title: Другие изменения
+      labels: ["*"]

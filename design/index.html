@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Twitch Cutter Profanity</title>
+  <meta name="description" content="Twitch Cutter Profanity: цензура мата и нарезка стримов с экспортом в MP4 и DaVinci Resolve.">
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="vendor/fonts.css">
+  <link rel="stylesheet" href="vendor/phosphor/regular/style.css">
+  <link rel="stylesheet" href="vendor/phosphor/fill/style.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body data-status="ready" data-mode="censor">
+  <a class="skip-link" href="#main">Перейти к рабочей области</a>
+  <canvas id="bg" aria-hidden="true"></canvas>
+
+  <div class="app">
+    <header class="topbar panel" role="banner">
+      <div class="brand pywebview-drag-region">
+        <img class="brand-mark" src="icon.png" width="32" height="32" alt="" aria-hidden="true" draggable="false">
+        <div>
+          <div class="brand-name">Twitch Cutter</div>
+          <span class="brand-label">PROFANITY</span>
+        </div>
+      </div>
+      <div class="vsep" aria-hidden="true"></div>
+      <div class="workflow-name pywebview-drag-region" id="workflowName">Вырезать мат <span>· новый проект</span></div>
+
+      <div class="top-spacer pywebview-drag-region"></div>
+
+      <div class="status-pill" role="status" aria-live="polite">
+        <span class="dot" aria-hidden="true"></span>
+        <strong id="statusText">Готово</strong>
+        <span id="statusDesc">Ожидает файл</span>
+      </div>
+      <div class="chip" data-tip="Модель распознавания речи"><i class="ph ph-waveform" aria-hidden="true"></i>Whisper <b id="chipModel">small</b></div>
+      <div class="chip gpu" data-tip="Устройство распознавания выбирается при загрузке модели"><i class="ph-fill ph-lightning" aria-hidden="true"></i><b id="chipDevice">Авто: CUDA / CPU</b></div>
+
+      <button class="icon-btn" id="btnOpenTop" data-tip="Открыть папку результата" aria-label="Открыть папку результата" disabled><i class="ph ph-folder-open"></i></button>
+      <div class="pop-anchor">
+        <button class="icon-btn" id="btnSettings" data-tip="Настройки" data-tip-align="end" aria-label="Настройки" aria-expanded="false" aria-controls="settingsPop"><i class="ph ph-gear-six"></i></button>
+        <div class="popover" id="settingsPop" aria-label="Сведения о системе">
+          <div class="pop-title">СИСТЕМА</div>
+          <div class="pop-row"><span>Версия</span><b id="systemVersion">0.1.0</b></div>
+          <div class="pop-row"><span>Устройство</span><b id="systemDevice">Определяется при загрузке</b></div>
+          <div class="pop-row"><span>Точность вычислений</span><b id="systemCompute">Авто</b></div>
+          <div class="pop-row"><span>Папка моделей</span><b id="systemModels">После подключения</b></div>
+        </div>
+      </div>
+
+      <div class="win-controls" aria-label="Управление окном">
+        <button class="win-btn" data-act="minimize" aria-label="Свернуть"><i class="ph ph-minus"></i></button>
+        <button class="win-btn" data-act="maximize" aria-label="Развернуть"><i class="ph ph-square"></i></button>
+        <button class="win-btn close" data-act="close" aria-label="Закрыть"><i class="ph ph-x"></i></button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <nav class="sidebar panel" aria-label="Этапы работы">
+        <div class="side-title">РАБОЧИЙ ПРОЦЕСС</div>
+        <ol class="steps" id="steps">
+          <li><button class="step" data-step="source" data-target="secSource"><span class="step-icon"><i class="ph ph-file-video"></i><span class="step-check"><i class="ph ph-check"></i></span></span><span class="step-text"><strong><em>01</em>Источник</strong><small>Видео, аудио или папка</small></span></button></li>
+          <li><button class="step" data-step="settings" data-target="secModel"><span class="step-icon"><i class="ph ph-sliders-horizontal"></i><span class="step-check"><i class="ph ph-check"></i></span></span><span class="step-text"><strong><em>02</em>Настройки обработки</strong><small>Модель и правила</small></span></button></li>
+          <li><button class="step" data-step="export" data-target="secExport"><span class="step-icon"><i class="ph ph-export"></i><span class="step-check"><i class="ph ph-check"></i></span></span><span class="step-text"><strong><em>03</em>Формат результата</strong><small>MP4 или DaVinci XML</small></span></button></li>
+          <li><button class="step" data-step="run" data-target="runArea"><span class="step-icon"><i class="ph ph-play"></i><span class="step-check"><i class="ph ph-check"></i></span></span><span class="step-text"><strong><em>04</em>Запуск</strong><small>Распознавание и монтаж</small></span></button></li>
+          <li><button class="step" data-step="result" data-target="runArea"><span class="step-icon"><i class="ph ph-flag-checkered"></i><span class="step-check"><i class="ph ph-check"></i></span></span><span class="step-text"><strong><em>05</em>Готовый результат</strong><small>Файлы рядом с исходником</small></span></button></li>
+        </ol>
+
+        <section class="side-foot" aria-label="Последний результат">
+          <h3>ПОСЛЕДНИЙ РЕЗУЛЬТАТ</h3>
+          <div class="last-file" id="lastFile">Обработанных файлов пока нет</div>
+          <div class="kv"><span>Обработано файлов</span><b id="lastCount">0</b></div>
+          <div class="kv"><span>Модель</span><b id="lastModel">—</b></div>
+          <button class="btn btn-sm" id="btnOpenSide" disabled><i class="ph ph-folder-open"></i>Открыть папку</button>
+        </section>
+      </nav>
+
+      <main class="main panel" id="main" tabindex="-1">
+        <div class="main-scroll" id="scroll">
+          <div class="main-head">
+            <div>
+              <h1 id="modeTitle">Чистый звук без потери эмоций</h1>
+              <p id="modeDesc">Находим мат по словам и глушим только корень. Голос и интонация остаются.</p>
+            </div>
+            <div class="seg" id="seg" role="tablist" aria-label="Режим работы" data-mode="censor">
+              <span class="seg-thumb" aria-hidden="true"></span>
+              <button role="tab" aria-selected="true" data-mode="censor"><i class="ph ph-shield-check"></i>Вырезать мат</button>
+              <button role="tab" aria-selected="false" data-mode="stream"><i class="ph ph-scissors"></i>Нарезать стрим</button>
+            </div>
+          </div>
+
+          <section class="section reveal lockable" id="secSource" style="--i:1" aria-labelledby="hSource">
+            <div class="section-head"><span class="section-num">01</span><h2 id="hSource">Источник</h2><span class="hint">Перетащите файл в окно или нажмите Ctrl+O</span></div>
+            <div id="sourceArea"></div>
+          </section>
+
+          <section class="section reveal lockable" id="secModel" style="--i:2" aria-labelledby="hModel">
+            <div class="section-head"><span class="section-num">02</span><h2 id="hModel">Модель распознавания</h2><span class="hint">Модель загружается один раз и остается в памяти</span></div>
+            <div class="models" id="models" role="radiogroup" aria-labelledby="hModel"></div>
+          </section>
+
+          <section class="section reveal lockable" id="secRules" style="--i:3" aria-labelledby="hRules">
+            <div class="section-head"><span class="section-num">03</span><h2 id="hRules">Правила обработки</h2></div>
+            <div class="card settings" id="rulesArea"></div>
+          </section>
+
+          <section class="section reveal lockable" id="secExport" style="--i:4" aria-labelledby="hExport">
+            <div class="section-head"><span class="section-num">04</span><h2 id="hExport">Экспорт</h2></div>
+            <div id="exportArea"></div>
+          </section>
+
+          <div class="run-area" id="runArea" aria-live="polite"></div>
+        </div>
+
+        <div class="dock">
+          <div class="actionbar">
+            <button class="btn btn-primary" id="btnStart"><span id="startLabel">Запустить обработку</span><i class="ph ph-arrow-right arrow" aria-hidden="true"></i></button>
+            <button class="btn btn-danger" id="btnStop" disabled><i class="ph ph-stop"></i>Остановить</button>
+            <div class="action-summary" id="summary"></div>
+          </div>
+          <section class="log" id="log" aria-label="Журнал обработки">
+            <div class="log-head">
+              <button class="log-toggle" id="logToggle" aria-expanded="false" aria-controls="logBody"><i class="ph ph-caret-up"></i><h3>ЖУРНАЛ</h3></button>
+              <div class="log-last" id="logLast">Журнал пуст</div>
+              <button class="btn btn-sm btn-ghost" id="logClear"><i class="ph ph-trash"></i>Очистить журнал</button>
+            </div>
+            <div class="log-body" id="logBody" hidden></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"><i class="ph ph-info"></i><span id="toastText"></span></div>
+
+  <script src="background.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

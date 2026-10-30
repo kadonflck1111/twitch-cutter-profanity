@@ -1,0 +1,19 @@
+* text=auto eol=lf
+
+*.py text eol=lf
+*.spec text eol=lf linguist-language=Python
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ps1 text eol=lf
+
+*.png binary
+*.ico binary
+*.woff2 binary
+*.wav binary
+
+design/vendor/** linguist-vendored
